@@ -46,6 +46,9 @@ run_jasperserver() {
         setup_jasperserver deploy-webapp-ce
     fi
     
+    # Apply customization zip if present.
+	config_customization
+    
     catalina.sh run
 }
 
@@ -59,6 +62,36 @@ function wait_db() {
 
   echo '[OK]'
 }
+
+config_customization() {
+  # Unpack zips (if they exist) from the path
+  # /usr/local/share/jasperreports-pro/customization
+  # to the JasperReports Server web application path
+  # $CATALINA_HOME/webapps/jasperserver-pro/
+  # File sorted with natural sort.
+  JRS_CUSTOMIZATION=\
+${JRS_CUSTOMIZATION:-/usr/local/share/jasperreports/customization}
+  JRS_CUSTOMIZATION_FILES=`find $JRS_CUSTOMIZATION -iname "*zip" \
+    -exec readlink -f {} \; | sort -V`
+  for customization in $JRS_CUSTOMIZATION_FILES; do
+    if [[ -f "$customization" ]]; then
+      unzip -o -q "$customization" \
+        -d $CATALINA_HOME/webapps/jasperserver/
+    fi
+  done
+}
+
+case "$1" in
+  run)
+    shift 1
+    run_jasperserver "$@"
+    ;;
+  init)
+    init_database
+    ;;
+  *)
+    exec "$@"
+esac
 
 export CATALINA_OPTS="-Xmx${JS_Xmx} -XX:MaxPermSize=${JS_MaxPermSize} ${JS_CATALINA_OPTS}"
 case "$1" in
